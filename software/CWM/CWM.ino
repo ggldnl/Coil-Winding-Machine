@@ -11,8 +11,8 @@ void disable();
 void enable();
 
 // Define the steppers
-StepperMotor stepper1(STEPPER_1_STEP_PIN, STEPPER_1_DIR_PIN);
-StepperMotor stepper2(STEPPER_2_STEP_PIN, STEPPER_2_DIR_PIN);
+StepperMotor stepperCoil(STEPPER_1_STEP_PIN, STEPPER_1_DIR_PIN);
+StepperMotor stepperFeeder(STEPPER_2_STEP_PIN, STEPPER_2_DIR_PIN);
 
 // Define the buttons
 Button lowerLimitSwitch(LOWER_LIMIT_SWITCH_PIN);
@@ -45,9 +45,9 @@ void moveAll() {
   /**
    * Move all steppers until they reach the target position.
    */
-  while (!(stepper1.isAtTarget() && stepper2.isAtTarget())) {
-    stepper1.step();
-    stepper2.step();
+  while (!(stepperCoil.isAtTarget() && stepperFeeder.isAtTarget())) {
+    stepperCoil.step();
+    stepperFeeder.step();
   }
 }
 
@@ -93,12 +93,9 @@ void homeAll() {
    */
 
   // Move the first axis down for 10000 steps or until the limit switch registers a press
-  homeAxis(stepper1, button1, -MAX_HOMING_STEPS);
+  homeAxis(stepperFeeder, lowerLimitSwitch, MAX_HOMING_STEPS);
   Logger::debug("Axis 0 homed.");
 
-  // homeAxis(stepper2, button2);
-  homeAxis(stepper2, button2, MAX_HOMING_STEPS);
-  Logger::debug("Axis 1 homed.");
 }
 
 void enable() {
