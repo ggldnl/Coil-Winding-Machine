@@ -1,64 +1,72 @@
-#ifndef BUTTON_HPP
-#define BUTTON_HPP
+#ifndef BUTTON_H
+#define BUTTON_H
+
+#include <Arduino.h>
+
+#define PRESSED LOW
+#define RELEASED HIGH
 
 class Button {
 public:
-    // Constructor: initializes the button pin and sets it up
-    Button(uint8_t buttonPin)
-        : buttonPin_(buttonPin), lastState_(HIGH), lastDebounceTime_(0), debounceDelay_(50) {
-        pinMode(buttonPin_, INPUT_PULLUP);  // Set pin as input with internal pull-up resistor
+    Button(uint8_t pin, uint16_t debounce_ms = 50)
+        : _pin(pin), _delay(debounce_ms), _state(RELEASED),
+          _ignore_until(0), _pressed_time(0), _has_changed(false) {
+        pinMode(_pin, INPUT_PULLUP);
     }
 
-    // Check if the button is pressed (LOW state)
-    bool pressed() {
-        int currentState = digitalRead(buttonPin_);
-        updateState(currentState);
-
-        // Return true only if the button was pressed (transition from HIGH to LOW)
-        return (lastState_ == LOW && stateChanged_ && currentState_ == LOW);
+    uint8_t getPin() {
+        return _pin; 
     }
 
-    // Check if the button is released (HIGH state)
-    bool released() {
-        int currentState = digitalRead(buttonPin_);
-        updateState(currentState);
-
-        // Return true only if the button was released (transition from LOW to HIGH)
-        return (lastState_ == HIGH && stateChanged_ && currentState_ == HIGH);
-    }
-
-    int getPin() {
-        return buttonPin_;
-    }
-
-private:
-    uint8_t buttonPin_;       // Button pin
-    int lastState_;           // Last known state of the button
-    int currentState_;        // Current state of the button
-    bool stateChanged_;       // Has the state changed since last read?
-    unsigned long lastDebounceTime_;  // Timestamp of last state change
-    const unsigned long debounceDelay_;  // Debounce time in milliseconds
-
-    // Debounce logic to filter out mechanical noise
-    void updateState(int currentState) {
-        unsigned long currentTime = millis();
-
-        // Check if state has changed and debounce
-        if (currentState != lastState_) {
-            lastDebounceTime_ = currentTime;
+    bool read() {
+        if (_ignore_until > millis()) {
+            // Ignore any changes until debounce period has passed
         }
+        else if (digitalRead(_pin) != _state) {
+            _ignore_until = millis() + _delay;
+            _state = !_state;
+            _has_changed = true;
 
-        if ((currentTime - lastDebounceTime_) > debounceDelay_) {
-            if (currentState != currentState_) {
-                currentState_ = currentState;
-                stateChanged_ = true;
+            if (_state == PRESSED) {
+                _pressed_time = millis();  // Start timing when button is pressed
             } else {
-                stateChanged_ = false;
+                _pressed_time = 0;  // Reset pressed time when button is released
             }
         }
 
-        lastState_ = currentState;
+        return _state;
     }
+
+    bool hasChanged() {
+        if (_has_changed) {
+            _has_changed = false;
+            return true;
+        }
+        return false;
+    }
+
+    bool pressed() {
+        return (read() == PRESSED && hasChanged());
+    }
+
+    bool released() {
+        return (read() == RELEASED && hasChanged());
+    }
+
+    bool isHeld(uint16_t hold_time_ms = 800) {
+        if (_state == PRESSED && (millis() - _pressed_time >= hold_time_ms)) {
+            return true;
+        }
+        return false;
+    }
+
+private:
+    uint8_t _pin;
+    uint16_t _delay;
+    uint8_t _state;
+    unsigned long _ignore_until;
+    unsigned long _pressed_time;
+    bool _has_changed;
 };
 
-#endif // BUTTON_HPP
+#endif // BUTTON_H
