@@ -6,8 +6,8 @@
 #include "states.hpp"
 
 // Define the functions
-void homeAxis(StepperMotor&, Button&, long, double = HOMING_VELOCITY_STEPS_S);
-void homeAll();
+void homeAxis(StepperMotor&, Button&, long, double);
+void home();
 void moveAll();
 void disable();
 void enable();
@@ -20,18 +20,25 @@ StepperMotor stepperCoil(STEPPER_1_STEP_PIN, STEPPER_1_DIR_PIN);
 StepperMotor stepperFeeder(STEPPER_2_STEP_PIN, STEPPER_2_DIR_PIN);
 
 // Define the buttons
-Button lowerLimitSwitch(LOWER_LIMIT_SWITCH_PIN);
-Button upperLimitSwitch(UPPER_LIMIT_SWITCH_PIN);
+Button limitSwitch(LIMIT_SWITCH_PIN);
 Button upButton(UP_BUTTON_PIN);
 Button downButton(DOWN_BUTTON_PIN);
 Button selectButton(SELECT_BUTTON_PIN);
 
 // Variables
-int wireGauge = MIN_WIRE_GAUGE;
-int spoolLength = MIN_SPOOL_LENGTH;
-int spoolDiameter = MIN_SPOOL_DIAMETER;
-int layerCount = MIN_LAYER_COUNT;
-bool startWinding = 0;
+/*
+float wireDiameter = MIN_WIRE_DIAMETER;
+float spoolLength = MIN_SPOOL_LENGTH;
+float spoolDiameter = MIN_SPOOL_DIAMETER;
+float layerCount = MIN_LAYER_COUNT;
+*/
+
+float wireDiameter = 0.5;   // mm
+float spoolLength = 41;     // mm
+float spoolDiameter = 9;    // mm
+float layerCount = 1;
+
+bool winding = 0;
 
 /* ---------------------------------- Setup --------------------------------- */
 
@@ -45,41 +52,73 @@ void setup() {
   // Set log level to INFO
   Logger::setLogLevel(Logger::DEBUG);
 
+  // Setup the board
+  pinMode(ENABLE, OUTPUT);
+  disable();
+
   // Setup the LCD
   setupLCD();
 
   // Create and add states
   fsm.addState(new StateMenuSplashScreen(&fsm));
-  fsm.addState(new StateSetWireGauge(&fsm, wireGauge));
+  fsm.addState(new StateSetWireDiameter(&fsm, wireDiameter));
   fsm.addState(new StateSetSpoolLength(&fsm, spoolLength));
   fsm.addState(new StateSetSpoolDiameter(&fsm, spoolDiameter));
   fsm.addState(new StateSetLayerCount(&fsm, layerCount));
-  fsm.addState(new StateStartWinding(&fsm, startWinding));
+  fsm.addState(new StateAskConfirm(&fsm));
+  fsm.addState(new StateStartWinding(&fsm, winding));
 
   // Start the automaton with the first menu item
   fsm.start(STATE_MENU_SPLASH_SCREEN);
 
-  /*
   // Enable the board
-  pinMode(ENABLE, OUTPUT);
   enable();
-  
-  // Home axis
-  homeAll();
-  Logger::info("All axis homed.");
-  */
 
-  delay(2000);
+  // Home axis
+  home();
+  Logger::info("All axis homed.");
+
+  // Temporary disable the board
+  disable();
+
+  // Move to the menu
+  // delay(2000);
   fsm.onEvent(EVENT_TIMEOUT);
 }
 
 /* -------------------------------- Movement -------------------------------- */
 
 void wind() {
+
+    /*
     for (int i = 0; i <= 100; i += 1) {
-      Logger::debug("Winding {} %", i);
-      fsm.onEvent(EVENT_UPDATE_PROGRESS);
-      delay(50); // Delay for demonstration
+        Logger::debug("Winding {} %", i);
+        fsm.onEvent(EVENT_UPDATE_PROGRESS);
+        delay(50); // Delay for demonstration
+    }
+    */
+
+    Logger::debug("Starting winding process");
+    Logger::debug("Wire diameter: {}", wireDiameter);
+    Logger::debug("Spool length: {}", spoolLength);
+    Logger::debug("Spool diameter: {}", spoolDiameter);
+    Logger::debug("Layer count: {}", layerCount);
+
+    // Compute the number of steps needed for a single layer
+    long steps = spoolLength * STEPS_PER_MM;
+    Logger::debug("Number of steps: {}", steps);
+
+    for (uint8_t i = 0; i < layerCount; ++i) {
+
+        // Set target position and speed
+        stepperFeeder.moveToPosition(-1 * (i % 2 == 0 ? steps : 0), WINDING_VELOCITY_STEPS_S);
+        stepperCoil.moveToPosition(i % 2 == 0 ? steps : 0, WINDING_VELOCITY_STEPS_S);
+
+        // Update the LCD
+        // fsm.onEvent(EVENT_UPDATE_PROGRESS);
+
+        // Move the steppers
+        moveAll();
     }
 }
 
@@ -129,13 +168,13 @@ void homeAxis(
   stepper.setCurrentPosition(0);
 }
 
-void homeAll() {
+void home() {
   /**
    * Home all the axis.
    */
 
   // Move the first axis down for 10000 steps or until the limit switch registers a press
-  homeAxis(stepperFeeder, lowerLimitSwitch, MAX_HOMING_STEPS);
+  homeAxis(stepperFeeder, limitSwitch, MAX_HOMING_STEPS, HOMING_VELOCITY_STEPS_S);
   Logger::debug("Axis 0 homed.");
 
 }
@@ -179,12 +218,18 @@ void loop() {
         fsm.onEvent(EVENT_SELECT_LONGPRESS);
     }
 
-    if (startWinding) {
+    if (winding) {
+
+        enable();
+
         // Start the winding routine (blocking)
         wind();
-        fsm.onEvent(EVENT_RESET);
-        startWinding = false;        
-    }
 
-    Logger::debug("{}, {}, {}, {}, {}", wireGauge, spoolLength, spoolDiameter, layerCount, startWinding);
+        // Done
+        fsm.onEvent(EVENT_RESET);
+        winding = false;       
+
+        // Disable the board
+        disable(); 
+    }
 }
