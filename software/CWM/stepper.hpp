@@ -196,6 +196,10 @@ class StepperMotor {
         return currentPosition;
     }
 
+    long getTargetPosition() {
+        return targetPosition;
+    }
+
     // Get current velocity
     double getCurrentVelocity() {
         return currentVelocity;
