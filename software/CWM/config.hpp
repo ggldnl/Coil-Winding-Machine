@@ -20,7 +20,7 @@ const double HOMING_VELOCITY_STEPS_S = 5000.0;
 const long MAX_HOMING_STEPS = 1000000;
 
 // Winding
-const double WINDING_VELOCITY_STEPS_S = 5000.0;
+const double WINDING_VELOCITY_STEPS_S = 1000.0;
 
 // Limit switches
 const uint8_t LIMIT_SWITCH_PIN = 10;

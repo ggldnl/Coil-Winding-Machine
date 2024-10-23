@@ -90,36 +90,51 @@ void setup() {
 
 void wind() {
 
-    /*
-    for (int i = 0; i <= 100; i += 1) {
-        Logger::debug("Winding {} %", i);
-        fsm.onEvent(EVENT_UPDATE_PROGRESS);
-        delay(50); // Delay for demonstration
-    }
-    */
-
     Logger::debug("Starting winding process");
     Logger::debug("Wire diameter: {}", wireDiameter);
     Logger::debug("Spool length: {}", spoolLength);
     Logger::debug("Spool diameter: {}", spoolDiameter);
     Logger::debug("Layer count: {}", layerCount);
 
-    // Compute the number of steps needed for a single layer
-    long steps = spoolLength * STEPS_PER_MM;
-    Logger::debug("Number of steps: {}", steps);
+    for (int layer = 0; layer < layerCount; ++layer) {
 
-    for (uint8_t i = 0; i < layerCount; ++i) {
+        Logger::debug("---------");
 
-        // Set target position and speed
-        stepperFeeder.moveToPosition(-1 * (i % 2 == 0 ? steps : 0), WINDING_VELOCITY_STEPS_S);
-        stepperCoil.moveToPosition(i % 2 == 0 ? steps : 0, WINDING_VELOCITY_STEPS_S);
+        // Current diameter of the spool at this layer
+        double currentDiameter = spoolDiameter + 2 * layer * wireDiameter;
+        Logger::debug("Layer {}: Current diameter: {}", layer, currentDiameter);
 
-        // Update the LCD
-        // fsm.onEvent(EVENT_UPDATE_PROGRESS);
+        // Length of wire wound per full revolution of the spool motor
+        double wireWoundPerRev = PI * currentDiameter;
+        Logger::debug("Layer {}: Wire wound per revolution: {} mm", layer, wireWoundPerRev);
 
-        // Move the steppers
+        // Feeder moves by wire's diameter per revolution
+        double feederDistancePerRev = wireDiameter;
+        Logger::debug("Layer {}: Feeder distance per revolution: {} mm", layer, feederDistancePerRev);
+
+        // Ratio between the two motors
+        double stepRatio = feederDistancePerRev / wireWoundPerRev;
+        Logger::debug("Layer {}: Step ratio: {}", layer, stepRatio);
+
+        long totalFeederSteps = spoolLength * STEPS_PER_MM;
+        Logger::debug("Layer {}: Total feeder steps: {}", layer, totalFeederSteps);
+
+        // Calculate total coil and feeder steps for the current layer
+        long totalCoilSteps = totalFeederSteps / stepRatio;
+        Logger::debug("Layer {}: Total coil steps: {}", layer, totalCoilSteps);
+
+        // Scale the spool motor's velocity
+        double feederTime = totalFeederSteps / (STEPS_PER_MM * WINDING_VELOCITY_STEPS_S);
+        double velocityCoil = totalCoilSteps / feederTime;
+
+        // Move both motors simultaneously for the current layer
+        stepperCoil.moveToPosition(totalCoilSteps, velocityCoil);
+        stepperFeeder.moveToPosition(-totalFeederSteps, WINDING_VELOCITY_STEPS_S);
+
         moveAll();
     }
+
+    Logger::debug("Winding process complete");
 }
 
 void moveAll() {
