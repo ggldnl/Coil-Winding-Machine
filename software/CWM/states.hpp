@@ -41,7 +41,7 @@ public:
     }
 
     // Return the current external variable
-    int getStateVariable() const {
+    float getStateVariable() const {
         return _externalVar;
     }
 
@@ -57,7 +57,6 @@ public:
 
     // Override the onEnter method if needed
     void onEnter() override {
-        // Custom behavior when entering this state can be added here
         _hasChanged = false;  // Reset the change flag on entering the state
         _externalVar = _init;
     }
@@ -101,7 +100,6 @@ public:
 
     // Override the onEnter method if needed
     void onEnter() override {
-        // Custom behavior when entering this state can be added here
         _hasChanged = false;  // Reset the change flag on entering the state
         _externalVar = _init;
     }
@@ -114,7 +112,7 @@ private:
 
 /* ---------------------------- Utility functions --------------------------- */
 
-String floatToString(float value, int width = 6, int decimals = 2) {
+String floatToString(float value, int width=6, int decimals=2) {
     char buffer[20]; // Buffer to hold the string representation
     dtostrf(value, width, decimals, buffer); // Convert float to string
     return String(buffer); // Return as String object
@@ -189,7 +187,8 @@ public:
 class StateSetWireDiameter : public StateWithRange {
 public:
     StateSetWireDiameter(FiniteStateAutomaton* automaton, float& externalVar) : 
-        StateWithRange(STATE_SET_WIRE_DIAMETER, automaton, externalVar, MIN_WIRE_DIAMETER, MAX_WIRE_DIAMETER) {}
+        StateWithRange(STATE_SET_WIRE_DIAMETER, automaton, externalVar, MIN_WIRE_DIAMETER, MAX_WIRE_DIAMETER) {
+        }
     void onEnter() override {
         StateWithRange::onEnter();
         updateLCD("Wire diameter:", floatToString(getStateVariable()) + " mm");

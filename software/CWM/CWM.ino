@@ -33,7 +33,7 @@ float spoolDiameter = MIN_SPOOL_DIAMETER;
 float layerCount = MIN_LAYER_COUNT;
 */
 
-float wireDiameter = 0.5;   // mm
+float wireDiameter = 0.45;   // mm
 float spoolLength = 41;     // mm
 float spoolDiameter = 9;    // mm
 float layerCount = 1;
