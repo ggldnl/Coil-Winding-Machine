@@ -108,28 +108,32 @@ void wind() {
         double wireWoundPerRev = PI * currentDiameter;
         Logger::debug("Layer {}: Wire wound per revolution: {} mm", layer, wireWoundPerRev);
 
-        // Feeder moves by wire's diameter per revolution
-        double feederDistancePerRev = wireDiameter;
-        Logger::debug("Layer {}: Feeder distance per revolution: {} mm", layer, feederDistancePerRev);
+        // Number of wire revolutions around the coil
+        double numRevolutions = spoolLength / wireDiameter;
+        Logger::debug("Layer {}: Num revolutions: {}", layer, numRevolutions);
 
-        // Ratio between the two motors
-        double stepRatio = feederDistancePerRev / wireWoundPerRev;
-        Logger::debug("Layer {}: Step ratio: {}", layer, stepRatio);
-
-        long totalFeederSteps = spoolLength * STEPS_PER_MM;
-        Logger::debug("Layer {}: Total feeder steps: {}", layer, totalFeederSteps);
-
-        // Calculate total coil and feeder steps for the current layer
-        long totalCoilSteps = totalFeederSteps / stepRatio;
+        // Number of steps for the coil motor to perform all the revolutions
+        long totalCoilSteps = numRevolutions * STEPS_PER_REVOLUTION * MICROSTEPPING;
         Logger::debug("Layer {}: Total coil steps: {}", layer, totalCoilSteps);
 
-        // Scale the spool motor's velocity
-        double feederTime = totalFeederSteps / (STEPS_PER_MM * WINDING_VELOCITY_STEPS_S);
-        double velocityCoil = totalCoilSteps / feederTime;
+        // Time the coil motor takes to perform a single revolution
+        double timeRevolution = (STEPS_PER_REVOLUTION * MICROSTEPPING) / WINDING_VELOCITY_STEPS_S;
+        Logger::debug("Layer {}: Time to complete a revolution: {}", layer, timeRevolution);
+
+        // The coil motor has a fixed velocity. We want the feeder to move by wireDiameter mm 
+        // for each full revolution of the coil motor. We know how many steps it takes to perform
+        // wireDiameter mm. We impose the same time as the time needed to the coil motor to perform
+        // a single revolution and we compute the feeder velocity from it. 
+        long feederVelocity = (STEPS_PER_MM * wireDiameter) / timeRevolution;
+        Logger::debug("Layer {}: Feeder velocity: {}", layer, feederVelocity);
+
+        // Compute the total steps needed to the feeder
+        long totalFeederSteps = STEPS_PER_MM * spoolLength;
+        Logger::debug("Layer {}: Feeder steps: {}", layer, totalFeederSteps);
 
         // Move both motors simultaneously for the current layer
-        stepperCoil.moveToPosition(totalCoilSteps, velocityCoil);
-        stepperFeeder.moveToPosition(-totalFeederSteps, WINDING_VELOCITY_STEPS_S);
+        stepperCoil.moveToPosition(totalCoilSteps, WINDING_VELOCITY_STEPS_S);
+        stepperFeeder.moveToPosition(-totalFeederSteps, feederVelocity);
 
         moveAll();
     }
