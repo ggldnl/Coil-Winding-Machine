@@ -33,7 +33,7 @@ float spoolDiameter = MIN_SPOOL_DIAMETER;
 float layerCount = MIN_LAYER_COUNT;
 */
 
-float wireDiameter = 0.45;   // mm
+float wireDiameter = 0.2;   // mm
 float spoolLength = 41;     // mm
 float spoolDiameter = 9;    // mm
 float layerCount = 1;
@@ -161,7 +161,7 @@ void homeAxis(
   ) {
   /**
    * Home the specified axis by moving the motor with constant speed until button fires.
-   * The motor stops after #homingSteps anyway. We can't use a tapezoidal speed profile
+   * The motor stops after #homingSteps anyway. We can't use a trapezoidal speed profile
    * since we don't know in advance how many steps we need to take and thus we cannot
    * decelerate properly. We could gradually accelerate and until we reach the maximum
    * velocity but I prefer to cruise to the limit switch with minimum velocity in order 
