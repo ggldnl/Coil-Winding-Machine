@@ -57,24 +57,42 @@ const float BIG_DELTA_SPOOL_LENGTH = 5.0;
 const float BIG_DELTA_SPOOL_DIAMETER = 5.0;
 const float BIG_DELTA_LAYER_COUNT = 5.0;
 
+const float MIN_TIME = 10;
+const float MAX_TIME = 120;
+
+const float DELTA_TIME = 1;
+const float DELTA_SPEED = 100;
+
+const float BIG_DELTA_TIME = 10;
+const float BIG_DELTA_SPEED = 1000;
+
 // States and events
 const uint8_t STATE_MENU_SPLASH_SCREEN = 0;
-const uint8_t STATE_SET_WIRE_DIAMETER = 1;
-const uint8_t STATE_SET_SPOOL_LENGTH = 2;
-const uint8_t STATE_SET_SPOOL_DIAMETER = 3;
-const uint8_t STATE_SET_LAYER_COUNT = 4;
-const uint8_t STATE_ASK_CONFIRM = 5;
-const uint8_t STATE_START_WINDING = 6;
-const uint8_t STATE_ERROR = 7;
+const uint8_t STATE_ERROR = 1;
 
-const uint8_t EVENT_TIMEOUT = 10;
-const uint8_t EVENT_UP_PRESS = 11;
-const uint8_t EVENT_UP_LONGPRESS = 12;
-const uint8_t EVENT_DOWN_PRESS = 13;
-const uint8_t EVENT_DOWN_LONGPRESS = 14;
-const uint8_t EVENT_SELECT_PRESS = 15;
-const uint8_t EVENT_SELECT_LONGPRESS = 16;
-const uint8_t EVENT_UPDATE_PROGRESS = 17;
-const uint8_t EVENT_RESET = 18;
+const uint8_t STATE_WIND = 2;
+const uint8_t STATE_SET_WIRE_DIAMETER = 3;
+const uint8_t STATE_SET_SPOOL_LENGTH = 4;
+const uint8_t STATE_SET_SPOOL_DIAMETER = 5;
+const uint8_t STATE_SET_LAYER_COUNT = 6;
+const uint8_t STATE_WIND_ASK_CONFIRM = 7;
+const uint8_t STATE_START_WINDING = 8;
+
+const uint8_t STATE_UNWIND = 9;
+const uint8_t STATE_SET_TIME = 10;
+const uint8_t STATE_SET_SPEED = 11;
+const uint8_t STATE_SET_DIRECTION = 12;
+const uint8_t STATE_UNWIND_ASK_CONFIRM = 13;
+const uint8_t STATE_START_UNWINDING = 14;
+
+const uint8_t EVENT_TIMEOUT = 21;
+const uint8_t EVENT_UP_PRESS = 22;
+const uint8_t EVENT_UP_LONGPRESS = 23;
+const uint8_t EVENT_DOWN_PRESS = 24;
+const uint8_t EVENT_DOWN_LONGPRESS = 25;
+const uint8_t EVENT_SELECT_PRESS = 26;
+const uint8_t EVENT_SELECT_LONGPRESS = 27;
+const uint8_t EVENT_UPDATE_PROGRESS = 28;
+const uint8_t EVENT_RESET = 29;
 
 #endif // CONFIG_HPP

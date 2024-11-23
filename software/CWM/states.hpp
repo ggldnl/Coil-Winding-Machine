@@ -7,14 +7,14 @@
 // LCD settings
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
-class StateWithRange : public State {
+class StateWithFloat : public State {
 /**
- * This class represents a state with a variable that can be DELTAed 
+ * This class represents a state with a float variable that can be incremented 
  * and decremented in a fixed range.  
  */
 
 public:
-    StateWithRange(uint8_t id, FiniteStateAutomaton* automaton, float& externalVar, float minVal, float maxVal)
+    StateWithFloat(uint8_t id, FiniteStateAutomaton* automaton, float& externalVar, float minVal, float maxVal)
         : State(id, automaton), _externalVar(externalVar), _init(externalVar), _min(minVal), _max(maxVal), _hasChanged(false) {
           _externalVar = min(_externalVar, _max);
           _externalVar = max(_externalVar, _min);
@@ -38,6 +38,13 @@ public:
             }
             _hasChanged = true;
         }
+    }
+
+    void set(float newVal) {
+      if (newVal > _min && newVal < _max) {
+          _externalVar = newVal;
+          _hasChanged = true;
+      }
     }
 
     // Return the current external variable
@@ -66,6 +73,75 @@ private:
     float _init;          // Stores the original value of the variable
     float _min;           // Minimum value for the state variable
     float _max;           // Maximum value for the state variable
+    bool _hasChanged;     // Flag to track if the state variable has changed
+};
+
+class StateWithInt : public State {
+/**
+ * This class represents a state with an int variable that can be incremented 
+ * and decremented in a fixed range.  
+ */
+
+public:
+    StateWithInt(uint8_t id, FiniteStateAutomaton* automaton, int& externalVar, int minVal, int maxVal)
+        : State(id, automaton), _externalVar(externalVar), _init(externalVar), _min(minVal), _max(maxVal), _hasChanged(false) {
+          _externalVar = min(_externalVar, _max);
+          _externalVar = max(_externalVar, _min);
+        }
+
+    void increment(int inc) {
+        if (_externalVar < _max) {
+            _externalVar += inc;
+            if (_externalVar > _max) {
+                _externalVar = _max;  // Clamp to max
+            }
+            _hasChanged = true;
+        }
+    }
+
+    void decrement(int dec) {
+        if (_externalVar > _min) {
+            _externalVar -= dec;
+            if (_externalVar < _min) {
+                _externalVar = _min;  // Clamp to min
+            }
+            _hasChanged = true;
+        }
+    }
+
+    void set(int newVal) {
+      if (newVal > _min && newVal < _max) {
+          _externalVar = newVal;
+          _hasChanged = true;
+      }
+    }
+
+    // Return the current external variable
+    int getStateVariable() const {
+        return _externalVar;
+    }
+
+    // Check if the state variable has changed
+    bool hasChanged() const {
+        return _hasChanged;
+    }
+
+    // Reset the change flag
+    void resetChanged() {
+        _hasChanged = false;
+    }
+
+    // Override the onEnter method if needed
+    void onEnter() override {
+        _hasChanged = false;  // Reset the change flag on entering the state
+        _externalVar = _init;
+    }
+
+private:
+    int& _externalVar;  // Reference to the external variable
+    int _init;          // Stores the original value of the variable
+    int _min;           // Minimum value for the state variable
+    int _max;           // Maximum value for the state variable
     bool _hasChanged;     // Flag to track if the state variable has changed
 };
 
@@ -179,18 +255,35 @@ public:
     }
     State* onEvent(const uint8_t& event) override {
         if (event == EVENT_TIMEOUT)
+            return automaton->changeState(STATE_WIND);
+        return this;
+    }
+};
+
+class StateWind : public State {
+public:
+    StateWind(FiniteStateAutomaton* automaton) : State(STATE_WIND, automaton) {}
+    void onEnter() override {
+        updateLCD("Wind", "");
+    }
+    State* onEvent(const uint8_t& event) override {
+        if (event == EVENT_UP_PRESS)
+            return automaton->changeState(STATE_UNWIND);
+        if (event == EVENT_DOWN_PRESS)
+            return automaton->changeState(STATE_UNWIND);
+        if (event == EVENT_SELECT_PRESS)
             return automaton->changeState(STATE_SET_WIRE_DIAMETER);
         return this;
     }
 };
 
-class StateSetWireDiameter : public StateWithRange {
+class StateSetWireDiameter : public StateWithFloat {
 public:
     StateSetWireDiameter(FiniteStateAutomaton* automaton, float& externalVar) : 
-        StateWithRange(STATE_SET_WIRE_DIAMETER, automaton, externalVar, MIN_WIRE_DIAMETER, MAX_WIRE_DIAMETER) {
+        StateWithFloat(STATE_SET_WIRE_DIAMETER, automaton, externalVar, MIN_WIRE_DIAMETER, MAX_WIRE_DIAMETER) {
         }
     void onEnter() override {
-        StateWithRange::onEnter();
+        StateWithFloat::onEnter();
         updateLCD("Wire diameter:", floatToString(getStateVariable()) + " mm");
     }
     State* onEvent(const uint8_t& event) override {
@@ -218,12 +311,12 @@ public:
     }
 };
 
-class StateSetSpoolLength : public StateWithRange {
+class StateSetSpoolLength : public StateWithFloat {
 public:
     StateSetSpoolLength(FiniteStateAutomaton* automaton, float& externalVar) : 
-        StateWithRange(STATE_SET_SPOOL_LENGTH, automaton, externalVar, MIN_SPOOL_LENGTH, MAX_SPOOL_LENGTH) {}
+        StateWithFloat(STATE_SET_SPOOL_LENGTH, automaton, externalVar, MIN_SPOOL_LENGTH, MAX_SPOOL_LENGTH) {}
     void onEnter() override {
-        StateWithRange::onEnter();
+        StateWithFloat::onEnter();
         updateLCD("Spool length:", floatToString(getStateVariable()) + " mm");
     }
     State* onEvent(const uint8_t& event) override {
@@ -252,12 +345,12 @@ public:
 };
 
 
-class StateSetSpoolDiameter : public StateWithRange {
+class StateSetSpoolDiameter : public StateWithFloat {
 public:
     StateSetSpoolDiameter(FiniteStateAutomaton* automaton, float& externalVar) : 
-        StateWithRange(STATE_SET_SPOOL_DIAMETER, automaton, externalVar, MIN_SPOOL_DIAMETER, MAX_SPOOL_DIAMETER) {}
+        StateWithFloat(STATE_SET_SPOOL_DIAMETER, automaton, externalVar, MIN_SPOOL_DIAMETER, MAX_SPOOL_DIAMETER) {}
     void onEnter() override {
-        StateWithRange::onEnter();
+        StateWithFloat::onEnter();
         updateLCD("Spool diameter:", floatToString(getStateVariable()) + " mm");
     }
     State* onEvent(const uint8_t& event) override {
@@ -285,17 +378,17 @@ public:
     }
 };
 
-class StateSetLayerCount : public StateWithRange {
+class StateSetLayerCount : public StateWithFloat {
 public:
     StateSetLayerCount(FiniteStateAutomaton* automaton, float& externalVar) : 
-        StateWithRange(STATE_SET_LAYER_COUNT, automaton, externalVar, MIN_LAYER_COUNT, MAX_LAYER_COUNT) {}
+        StateWithFloat(STATE_SET_LAYER_COUNT, automaton, externalVar, MIN_LAYER_COUNT, MAX_LAYER_COUNT) {}
     void onEnter() override {
-        StateWithRange::onEnter();
+        StateWithFloat::onEnter();
         updateLCD("Layer count:", floatToString(getStateVariable()) + " mm");
     }
     State* onEvent(const uint8_t& event) override {
         if (event == EVENT_SELECT_PRESS)
-            return automaton->changeState(STATE_ASK_CONFIRM);
+            return automaton->changeState(STATE_WIND_ASK_CONFIRM);
         if (event == EVENT_UP_PRESS) {
             increment(DELTA_LAYER_COUNT);
         }
@@ -318,9 +411,9 @@ public:
     }
 };
 
-class StateAskConfirm : public State {
+class StateWindAskConfirm : public State {
 public:
-    StateAskConfirm(FiniteStateAutomaton* automaton) : State(STATE_ASK_CONFIRM, automaton) {}
+    StateWindAskConfirm(FiniteStateAutomaton* automaton) : State(STATE_WIND_ASK_CONFIRM, automaton) {}
     void onEnter() override {
         updateLCD("Start winding?", "");
     }
@@ -328,17 +421,17 @@ public:
         if (event == EVENT_SELECT_PRESS)
             return automaton->changeState(STATE_START_WINDING);
         if (event == EVENT_SELECT_LONGPRESS)
-            return automaton->changeState(STATE_SET_WIRE_DIAMETER);
+            return automaton->changeState(STATE_WIND);
         return this;
     }
 };
 
-class StateStartWinding : public StateWithBool {
+class StateStartWinding : public StateWithInt {
 public:
-    StateStartWinding(FiniteStateAutomaton* automaton, bool& externalVar) : 
-        StateWithBool(STATE_START_WINDING, automaton, externalVar), _progress(0) {}
+    StateStartWinding(FiniteStateAutomaton* automaton, int& externalVar) : 
+        StateWithInt(STATE_START_WINDING, automaton, externalVar, 0, 2), _progress(0) {}
     void onEnter() override {
-        StateWithBool::onEnter();
+        StateWithInt::onEnter();
 
         // Update the LCD
         updateLCD("Winding...", "");
@@ -346,8 +439,8 @@ public:
         // Reset the progress variable
         _progress = 0;
 
-        // Toggle to signal we can start the procedure to the outside code
-        toggle();
+        // Set to 1 to signal we can start the procedure to the outside code
+        set(1);
     }
     State* onEvent(const uint8_t& event) override {
         if (event == EVENT_RESET) {
@@ -356,6 +449,163 @@ public:
         if (event == EVENT_UPDATE_PROGRESS) {
             _progress += 1;
             updateLCD("Winding...", createProgressBar(_progress));
+        }
+        return this;
+    }
+private:
+    int _progress;
+};
+
+class StateUnwind : public State {
+public:
+    StateUnwind(FiniteStateAutomaton* automaton) : State(STATE_UNWIND, automaton) {}
+    void onEnter() override {
+        updateLCD("Unwind", "");
+    }
+    State* onEvent(const uint8_t& event) override {
+        if (event == EVENT_UP_PRESS)
+            return automaton->changeState(STATE_WIND);
+        if (event == EVENT_DOWN_PRESS)
+            return automaton->changeState(STATE_WIND);
+        if (event == EVENT_SELECT_PRESS)
+            return automaton->changeState(STATE_SET_TIME);
+        return this;
+    }
+};
+
+class StateSetTime : public StateWithFloat {
+public:
+    StateSetTime(FiniteStateAutomaton* automaton, float& externalVar) :
+        StateWithFloat(STATE_SET_TIME, automaton, externalVar, MIN_TIME, MAX_TIME) {}
+    void onEnter() override {
+        StateWithFloat::onEnter();
+        updateLCD("Time:", floatToString(getStateVariable()) + " s");
+    }
+    State* onEvent(const uint8_t& event) override {
+        if (event == EVENT_SELECT_PRESS)
+            return automaton->changeState(STATE_SET_SPEED);
+        if (event == EVENT_UP_PRESS) {
+            increment(DELTA_TIME);
+        }
+        if (event == EVENT_DOWN_PRESS) {
+            decrement(DELTA_TIME);
+        }
+        if (event == EVENT_UP_LONGPRESS) {
+            increment(BIG_DELTA_TIME);
+        }
+        if (event == EVENT_DOWN_LONGPRESS) {
+            decrement(BIG_DELTA_TIME);
+        }
+
+        if (hasChanged()) {
+            updateLCD("Time:", floatToString(getStateVariable()) + " s");
+            resetChanged();
+        }
+
+        return this;
+    }
+};
+
+class StateSetSpeed : public StateWithFloat {
+public:
+    StateSetSpeed(FiniteStateAutomaton* automaton, float& externalVar) :
+        StateWithFloat(STATE_SET_SPEED, automaton, externalVar, MIN_VELOCITY_STEPS_S, MAX_VELOCITY_STEPS_S) {}
+    void onEnter() override {
+        StateWithFloat::onEnter();
+        updateLCD("Speed:", floatToString(getStateVariable()) + " steps/s");
+    }
+    State* onEvent(const uint8_t& event) override {
+        if (event == EVENT_SELECT_PRESS)
+            return automaton->changeState(STATE_SET_DIRECTION);
+        if (event == EVENT_UP_PRESS) {
+            increment(DELTA_SPEED);
+        }
+        if (event == EVENT_DOWN_PRESS) {
+            decrement(DELTA_SPEED);
+        }
+        if (event == EVENT_UP_LONGPRESS) {
+            increment(BIG_DELTA_SPEED);
+        }
+        if (event == EVENT_DOWN_LONGPRESS) {
+            decrement(BIG_DELTA_SPEED);
+        }
+
+        if (hasChanged()) {
+            updateLCD("Speed:", floatToString(getStateVariable()) + " steps/s");
+            resetChanged();
+        }
+
+        return this;
+    }
+};
+
+class StateSetDirection : public StateWithBool {
+public:
+    StateSetDirection(FiniteStateAutomaton* automaton, bool& externalVar) :
+        StateWithBool(STATE_SET_DIRECTION, automaton, externalVar){}
+    void onEnter() override {
+        StateWithBool::onEnter();
+        updateLCD("Direction:", getStateVariable() ? "Forward" : "Backward");
+    }
+    State* onEvent(const uint8_t& event) override {
+        if (event == EVENT_UP_PRESS) {
+            toggle();
+        }
+        if (event == EVENT_DOWN_PRESS) {
+            toggle();
+        }
+
+        if (event == EVENT_SELECT_PRESS) {
+            return automaton->changeState(STATE_UNWIND_ASK_CONFIRM);
+        }
+
+        if (hasChanged()) {
+            updateLCD("Direction:", getStateVariable() ? "Forward" : "Backward");
+            resetChanged();
+        }
+
+        return this;
+    }
+};
+
+class StateUnwindAskConfirm : public State {
+public:
+    StateUnwindAskConfirm(FiniteStateAutomaton* automaton) : State(STATE_UNWIND_ASK_CONFIRM, automaton) {}
+    void onEnter() override {
+        updateLCD("Start unwinding?", "");
+    }
+    State* onEvent(const uint8_t& event) override {
+        if (event == EVENT_SELECT_PRESS)
+            return automaton->changeState(STATE_START_UNWINDING);
+        if (event == EVENT_SELECT_LONGPRESS)
+            return automaton->changeState(STATE_UNWIND);
+        return this;
+    }
+};
+
+class StateStartUnwinding : public StateWithInt {
+public:
+    StateStartUnwinding(FiniteStateAutomaton* automaton, int& externalVar) :
+        StateWithInt(STATE_START_UNWINDING, automaton, externalVar, 0, 2), _progress(0) {}
+    void onEnter() override {
+        StateWithInt::onEnter();
+
+        // Update the LCD
+        updateLCD("Unwinding...", "");
+
+        // Reset the progress variable
+        _progress = 0;
+
+        // Set to 2 to signal we can start the procedure to the outside code
+        set(2);
+    }
+    State* onEvent(const uint8_t& event) override {
+        if (event == EVENT_RESET) {
+            return automaton->changeState(STATE_SET_SPEED);
+        }
+        if (event == EVENT_UPDATE_PROGRESS) {
+            _progress += 1;
+            updateLCD("Unwinding...", createProgressBar(_progress));
         }
         return this;
     }
