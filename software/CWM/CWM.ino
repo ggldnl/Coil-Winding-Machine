@@ -168,15 +168,19 @@ void unwind() {
     Logger::debug("Direction: {}", direction ? "Forward" : "Backward");
     */
 
+    Logger::debug("Time: {}", time);
+    Logger::debug("Speed: {}", speed);
+    Logger::debug("Direction: {}", direction ? "Forward" : "Backward");
+
     // speed = distance / time -> distance = speed * time
     int distance = speed * time;
 
-    // Move both motors simultaneously for the current layer
-    stepperCoil.moveToPosition(distance, WINDING_VELOCITY_STEPS_S);
+    stepperFeeder.moveToPosition(0, speed);
+    stepperCoil.moveToPosition(distance, speed);
 
     moveAll();
 
-    // Logger::debug("Unwinding process complete");
+    Logger::debug("Unwinding process complete");
 
 }
 

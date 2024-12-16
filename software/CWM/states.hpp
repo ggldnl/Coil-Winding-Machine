@@ -110,7 +110,7 @@ public:
     }
 
     void set(int newVal) {
-      if (newVal > _min && newVal < _max) {
+      if (newVal >= _min && newVal <= _max) {
           _externalVar = newVal;
           _hasChanged = true;
       }
@@ -384,7 +384,7 @@ public:
         StateWithFloat(STATE_SET_LAYER_COUNT, automaton, externalVar, MIN_LAYER_COUNT, MAX_LAYER_COUNT) {}
     void onEnter() override {
         StateWithFloat::onEnter();
-        updateLCD("Layer count:", floatToString(getStateVariable()) + " mm");
+        updateLCD("Layer count:", floatToString(getStateVariable()));
     }
     State* onEvent(const uint8_t& event) override {
         if (event == EVENT_SELECT_PRESS)
